@@ -40,6 +40,7 @@ class FadingTextAnimation extends StatefulWidget {
 
 class _FadingTextAnimationState extends State<FadingTextAnimation> {
   bool _isVisible = true;
+  Color _textColor = Colors.black;
 
   void toggleVisibility() {
     setState(() {
@@ -54,10 +55,53 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
     );
   }
 
+  void pickColor() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Pick a text color'),
+          content: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _textColor = Colors.red;
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: const CircleAvatar(backgroundColor: Colors.red),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _textColor = Colors.green;
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: const CircleAvatar(backgroundColor: Colors.green),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _textColor = Colors.blue;
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: const CircleAvatar(backgroundColor: Colors.blue),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // Detect a left swipe to navigate to the second screen
+      // Swipe to navigate to second screen
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
           navigateToSecondScreen();
@@ -70,16 +114,20 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
             IconButton(
               icon: const Icon(Icons.brightness_6),
               onPressed: widget.toggleTheme,
-            )
+            ),
+            IconButton(
+              icon: const Icon(Icons.palette),
+              onPressed: pickColor,
+            ),
           ],
         ),
         body: Center(
           child: AnimatedOpacity(
             opacity: _isVisible ? 1.0 : 0.0,
             duration: const Duration(seconds: 1),
-            child: const Text(
+            child: Text(
               'Hello, Flutter!',
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 24, color: _textColor),
             ),
           ),
         ),
@@ -115,7 +163,7 @@ class _SecondFadingAnimationState extends State<SecondFadingAnimation> {
       body: Center(
         child: AnimatedOpacity(
           opacity: _isVisible ? 1.0 : 0.0,
-          duration: const Duration(seconds: 2), // Different duration for this screen
+          duration: const Duration(seconds: 2),
           child: const Text(
             'Welcome to the second screen!',
             style: TextStyle(fontSize: 24),
