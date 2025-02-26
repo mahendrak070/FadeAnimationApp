@@ -6,7 +6,7 @@ void main() {
 
 class MyApp extends StatefulWidget {
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
@@ -21,8 +21,18 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      theme: ThemeData.light(),
-      darkTheme: ThemeData.dark(),
+      title: 'Fading Text Animation',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: FadingTextAnimation(toggleTheme: toggleTheme),
     );
@@ -42,6 +52,7 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
   bool _isVisible = true;
   bool _showFrame = false;
   Color _textColor = Colors.black;
+  bool _isNavigating = false; // Prevent multiple navigations
 
   void toggleVisibility() {
     setState(() {
@@ -57,42 +68,40 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
   }
 
   void pickColor() {
+    // Extended list of colors for modern design
+    final List<Color> colors = [
+      Colors.red,
+      Colors.green,
+      Colors.blue,
+      Colors.orange,
+      Colors.purple,
+      Colors.teal,
+      Colors.pink,
+      Colors.amber,
+    ];
+
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text('Pick a text color'),
-          content: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              GestureDetector(
+          content: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: colors.map((color) {
+              return GestureDetector(
                 onTap: () {
                   setState(() {
-                    _textColor = Colors.red;
+                    _textColor = color;
                   });
                   Navigator.of(context).pop();
                 },
-                child: const CircleAvatar(backgroundColor: Colors.red),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _textColor = Colors.green;
-                  });
-                  Navigator.of(context).pop();
-                },
-                child: const CircleAvatar(backgroundColor: Colors.green),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _textColor = Colors.blue;
-                  });
-                  Navigator.of(context).pop();
-                },
-                child: const CircleAvatar(backgroundColor: Colors.blue),
-              ),
-            ],
+                child: CircleAvatar(
+                  backgroundColor: color,
+                  radius: 20,
+                ),
+              );
+            }).toList(),
           ),
         );
       },
@@ -101,75 +110,113 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      // Swipe left to navigate to the second screen
-      onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
-          navigateToSecondScreen();
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Fading Text Animation'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.brightness_6),
-              onPressed: widget.toggleTheme,
+    // Use Theme.of(context).brightness to set a modern toggle icon.
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    return Scaffold(
+      backgroundColor: Colors.lightBlue.shade50, // New background color for main screen
+      appBar: AppBar(
+        title: const Text('Fading Text Animation'),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isLight ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
             ),
-            IconButton(
-              icon: const Icon(Icons.palette),
-              onPressed: pickColor,
-            ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(height: 20),
-              AnimatedOpacity(
-                opacity: _isVisible ? 1.0 : 0.0,
-                duration: const Duration(seconds: 1),
-                curve: Curves.easeInOut,
-                child: Text(
-                  'Hello, Flutter!',
-                  style: TextStyle(fontSize: 24, color: _textColor),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text('Toggle image frame:'),
-              Switch(
-                value: _showFrame,
-                onChanged: (value) {
-                  setState(() {
-                    _showFrame = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 20),
-              Container(
-                decoration: _showFrame
-                    ? BoxDecoration(
-                        border: Border.all(color: Colors.blue, width: 3),
-                        borderRadius: BorderRadius.circular(12),
-                      )
-                    : null,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    'https://via.placeholder.com/150',
-                    width: 150,
-                    height: 150,
+            onPressed: widget.toggleTheme,
+          ),
+          IconButton(
+            icon: const Icon(Icons.palette_outlined),
+            onPressed: pickColor,
+          ),
+        ],
+      ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanUpdate: (details) {
+          if (details.delta.dx < -10 && !_isNavigating) {
+            _isNavigating = true;
+            navigateToSecondScreen();
+          }
+        },
+        onPanEnd: (details) {
+          _isNavigating = false;
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: 24),
+                      AnimatedOpacity(
+                        opacity: _isVisible ? 1.0 : 0.0,
+                        duration: const Duration(seconds: 1),
+                        curve: Curves.easeInOut,
+                        child: Text(
+                          'Hello, Flutter!',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w600,
+                            color: _textColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Toggle image frame:',
+                        style: TextStyle(fontSize: 18),
+                      ),
+                      Switch(
+                        value: _showFrame,
+                        onChanged: (value) {
+                          setState(() {
+                            _showFrame = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        decoration: _showFrame
+                            ? BoxDecoration(
+                                border: Border.all(
+                                  color: Colors.deepPurple,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black26,
+                                    blurRadius: 4,
+                                    offset: const Offset(2, 2),
+                                  ),
+                                ],
+                              )
+                            : null,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.asset(
+                            'assets/images/image1.png',
+                            width: 150,
+                            height: 150,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: toggleVisibility,
-          child: const Icon(Icons.play_arrow),
-        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: toggleVisibility,
+        child: const Icon(Icons.animation_outlined),
       ),
     );
   }
@@ -192,6 +239,7 @@ class _SecondFadingAnimationState extends State<SecondFadingAnimation> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.orange.shade50, // New background color for second screen
       appBar: AppBar(
         title: const Text('Second Fading Animation'),
       ),
@@ -201,13 +249,13 @@ class _SecondFadingAnimationState extends State<SecondFadingAnimation> {
           duration: const Duration(seconds: 2),
           child: const Text(
             'Welcome to the second screen!',
-            style: TextStyle(fontSize: 24),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: toggleVisibility,
-        child: const Icon(Icons.play_arrow),
+        child: const Icon(Icons.animation_outlined),
       ),
     );
   }
