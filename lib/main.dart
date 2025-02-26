@@ -40,6 +40,7 @@ class FadingTextAnimation extends StatefulWidget {
 
 class _FadingTextAnimationState extends State<FadingTextAnimation> {
   bool _isVisible = true;
+  bool _showFrame = false;
   Color _textColor = Colors.black;
 
   void toggleVisibility() {
@@ -101,7 +102,7 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // Swipe to navigate to second screen
+      // Swipe left to navigate to the second screen
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity != null && details.primaryVelocity! < 0) {
           navigateToSecondScreen();
@@ -121,14 +122,48 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
             ),
           ],
         ),
-        body: Center(
-          child: AnimatedOpacity(
-            opacity: _isVisible ? 1.0 : 0.0,
-            duration: const Duration(seconds: 1),
-            child: Text(
-              'Hello, Flutter!',
-              style: TextStyle(fontSize: 24, color: _textColor),
-            ),
+        body: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 20),
+              AnimatedOpacity(
+                opacity: _isVisible ? 1.0 : 0.0,
+                duration: const Duration(seconds: 1),
+                curve: Curves.easeInOut,
+                child: Text(
+                  'Hello, Flutter!',
+                  style: TextStyle(fontSize: 24, color: _textColor),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text('Toggle image frame:'),
+              Switch(
+                value: _showFrame,
+                onChanged: (value) {
+                  setState(() {
+                    _showFrame = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 20),
+              Container(
+                decoration: _showFrame
+                    ? BoxDecoration(
+                        border: Border.all(color: Colors.blue, width: 3),
+                        borderRadius: BorderRadius.circular(12),
+                      )
+                    : null,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    'https://via.placeholder.com/150',
+                    width: 150,
+                    height: 150,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         floatingActionButton: FloatingActionButton(
