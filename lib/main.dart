@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 void main() {
   runApp(MyApp());
@@ -11,6 +12,8 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool _isDarkMode = false;
+  // Global text color for both screens
+  Color _globalTextColor = Colors.white;
 
   void toggleTheme() {
     setState(() {
@@ -18,10 +21,16 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
+  void updateGlobalTextColor(Color color) {
+    setState(() {
+      _globalTextColor = color;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fading Text Animation',
+      title: 'Animation App',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -34,41 +43,72 @@ class _MyAppState extends State<MyApp> {
         useMaterial3: true,
       ),
       themeMode: _isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: FadingTextAnimation(toggleTheme: toggleTheme),
+      home: HomeScreen(
+        toggleTheme: toggleTheme,
+        globalTextColor: _globalTextColor,
+        updateGlobalTextColor: updateGlobalTextColor,
+      ),
     );
   }
 }
 
-class FadingTextAnimation extends StatefulWidget {
+class HomeScreen extends StatefulWidget {
   final VoidCallback toggleTheme;
-  const FadingTextAnimation({Key? key, required this.toggleTheme})
-      : super(key: key);
+  final Color globalTextColor;
+  final Function(Color) updateGlobalTextColor;
+  const HomeScreen({
+    Key? key,
+    required this.toggleTheme,
+    required this.globalTextColor,
+    required this.updateGlobalTextColor,
+  }) : super(key: key);
 
   @override
-  _FadingTextAnimationState createState() => _FadingTextAnimationState();
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _FadingTextAnimationState extends State<FadingTextAnimation> {
-  bool _isVisible = true;
+class _HomeScreenState extends State<HomeScreen> {
+  // Animation states for home screen
+  bool _textVisible = true;
+  bool _fadingImageVisible = true;
+  double _rotationAngle = 0.0;
   bool _showFrame = false;
-  Color _textColor = Colors.black;
-  bool _isNavigating = false; // Prevent multiple navigations
+  double _animationDuration = 1.0;
+  bool _isNavigating = false;
+  static const double imageSize = 220; // All images use this size
 
-  void toggleVisibility() {
+  void toggleTextVisibility() {
     setState(() {
-      _isVisible = !_isVisible;
+      _textVisible = !_textVisible;
     });
   }
 
-  void navigateToSecondScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => SecondFadingAnimation()),
-    );
+  void toggleFadingImage() {
+    setState(() {
+      _fadingImageVisible = !_fadingImageVisible;
+    });
+  }
+
+  void rotateImage() {
+    setState(() {
+      _rotationAngle += math.pi / 2; // Rotate 90° each tap
+    });
+  }
+
+  void toggleFrame() {
+    setState(() {
+      _showFrame = !_showFrame;
+    });
+  }
+
+  void updateAnimationDuration(double value) {
+    setState(() {
+      _animationDuration = value;
+    });
   }
 
   void pickColor() {
-    // Extended list of colors for modern design
+    // Extended palette of colors
     final List<Color> colors = [
       Colors.red,
       Colors.green,
@@ -79,26 +119,23 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
       Colors.pink,
       Colors.amber,
     ];
-
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Pick a text color'),
+          title: const Text('Select a Text Color'),
           content: Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 12,
             children: colors.map((color) {
               return GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _textColor = color;
-                  });
+                  widget.updateGlobalTextColor(color);
                   Navigator.of(context).pop();
                 },
                 child: CircleAvatar(
                   backgroundColor: color,
-                  radius: 20,
+                  radius: 22,
                 ),
               );
             }).toList(),
@@ -108,154 +145,363 @@ class _FadingTextAnimationState extends State<FadingTextAnimation> {
     );
   }
 
+  // Swipe left to navigate to the second screen.
+  void _handleSwipe(DragUpdateDetails details) {
+    if (details.delta.dx < -10 && !_isNavigating) {
+      _isNavigating = true;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              SecondScreen(globalTextColor: widget.globalTextColor),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Use Theme.of(context).brightness to set a modern toggle icon.
-    final isLight = Theme.of(context).brightness == Brightness.light;
-
+    // Adjust the gradient based on current theme brightness.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundGradient = LinearGradient(
+      colors: isDark
+          ? [Colors.grey.shade900, Colors.black87]
+          : [Colors.indigo.shade700, Colors.blue.shade300],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
     return Scaffold(
-      backgroundColor: Colors.lightBlue.shade50, // New background color for main screen
-      appBar: AppBar(
-        title: const Text('Fading Text Animation'),
-        actions: [
-          IconButton(
-            icon: Icon(
-              isLight ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-            ),
-            onPressed: widget.toggleTheme,
-          ),
-          IconButton(
-            icon: const Icon(Icons.palette_outlined),
-            onPressed: pickColor,
-          ),
-        ],
-      ),
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onPanUpdate: (details) {
-          if (details.delta.dx < -10 && !_isNavigating) {
-            _isNavigating = true;
-            navigateToSecondScreen();
-          }
-        },
-        onPanEnd: (details) {
-          _isNavigating = false;
-        },
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: Container(
+        decoration: BoxDecoration(gradient: backgroundGradient),
+        child: SafeArea(
+          child: GestureDetector(
+            onPanUpdate: _handleSwipe,
+            behavior: HitTestBehavior.opaque,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Custom header row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const SizedBox(height: 24),
-                      AnimatedOpacity(
-                        opacity: _isVisible ? 1.0 : 0.0,
-                        duration: const Duration(seconds: 1),
-                        curve: Curves.easeInOut,
-                        child: Text(
-                          'Hello, Flutter!',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w600,
-                            color: _textColor,
+                      Text(
+                        'Animations',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.palette_outlined,
+                                color: Colors.white),
+                            onPressed: pickColor,
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Toggle image frame:',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                      Switch(
-                        value: _showFrame,
-                        onChanged: (value) {
-                          setState(() {
-                            _showFrame = value;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                      Container(
-                        decoration: _showFrame
-                            ? BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.deepPurple,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black26,
-                                    blurRadius: 4,
-                                    offset: const Offset(2, 2),
-                                  ),
-                                ],
-                              )
-                            : null,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.asset(
-                            'assets/images/image1.png',
-                            width: 150,
-                            height: 150,
-                            fit: BoxFit.cover,
+                          IconButton(
+                            icon: Icon(
+                              isDark
+                                  ? Icons.light_mode_outlined
+                                  : Icons.dark_mode_outlined,
+                              color: Colors.white,
+                            ),
+                            onPressed: widget.toggleTheme,
                           ),
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  // Fading Text Animation Section
+                  SectionTitle(
+                      title: 'Fading Text Animation',
+                      textColor: widget.globalTextColor),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    opacity: _textVisible ? 1.0 : 0.0,
+                    duration: Duration(
+                        seconds: _animationDuration.toInt()),
+                    curve: Curves.easeInOut,
+                    child: Text(
+                      'Hello, Creative Flutter!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: widget.globalTextColor,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black45,
+                            offset: Offset(2, 2),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                    ),
+                    onPressed: toggleTextVisibility,
+                    child: const Text('Toggle Text'),
+                  ),
+                  const Divider(
+                      height: 40, thickness: 1.5, color: Colors.white70),
+                  // Fading Image Animation Section
+                  SectionTitle(
+                      title: 'Fading Image Animation',
+                      textColor: widget.globalTextColor),
+                  const SizedBox(height: 8),
+                  AnimatedOpacity(
+                    opacity: _fadingImageVisible ? 1.0 : 0.0,
+                    duration: Duration(
+                        seconds: _animationDuration.toInt()),
+                    curve: Curves.easeIn,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/image1.png',
+                        width: imageSize,
+                        height: imageSize,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                    ),
+                    onPressed: toggleFadingImage,
+                    child: const Text('Toggle Image'),
+                  ),
+                  const Divider(
+                      height: 40, thickness: 1.5, color: Colors.white70),
+                  // Rotating Image Animation Section
+                  SectionTitle(
+                      title: 'Rotating Image Animation',
+                      textColor: widget.globalTextColor),
+                  const SizedBox(height: 8),
+                  AnimatedRotation(
+                    turns: _rotationAngle / (2 * math.pi),
+                    duration: Duration(
+                        seconds: _animationDuration.toInt()),
+                    curve: Curves.elasticOut,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/image1.png',
+                        width: imageSize,
+                        height: imageSize,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white.withOpacity(0.8),
+                      foregroundColor: Colors.black87,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                    ),
+                    onPressed: rotateImage,
+                    child: const Text('Rotate Image'),
+                  ),
+                  const Divider(
+                      height: 40, thickness: 1.5, color: Colors.white70),
+                  // Toggleable Image Frame Section
+                  SectionTitle(
+                      title: 'Image with Toggleable Frame',
+                      textColor: widget.globalTextColor),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    title: const Text(
+                      'Show Frame',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    value: _showFrame,
+                    onChanged: (value) => toggleFrame(),
+                  ),
+                  Container(
+                    decoration: _showFrame
+                        ? BoxDecoration(
+                            border: Border.all(
+                                color: Colors.white70, width: 3),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black38,
+                                blurRadius: 6,
+                                offset: Offset(2, 2),
+                              ),
+                            ],
+                          )
+                        : null,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/image1.png',
+                        width: imageSize,
+                        height: imageSize,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  const Divider(
+                      height: 40, thickness: 1.5, color: Colors.white70),
+                  // Animation Duration Slider Section
+                  Text(
+                    'Animation Duration: ${_animationDuration.toStringAsFixed(1)} sec',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  Slider(
+                    value: _animationDuration,
+                    min: 1,
+                    max: 5,
+                    divisions: 8,
+                    label: _animationDuration.toStringAsFixed(1),
+                    onChanged: updateAnimationDuration,
+                    activeColor: Colors.white,
+                    inactiveColor: Colors.white54,
+                  ),
+                  const SizedBox(height: 30),
+                  Text(
+                    'Swipe left for more!',
+                    style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: toggleVisibility,
-        child: const Icon(Icons.animation_outlined),
       ),
     );
   }
 }
 
-class SecondFadingAnimation extends StatefulWidget {
-  @override
-  _SecondFadingAnimationState createState() => _SecondFadingAnimationState();
-}
-
-class _SecondFadingAnimationState extends State<SecondFadingAnimation> {
-  bool _isVisible = true;
-
-  void toggleVisibility() {
-    setState(() {
-      _isVisible = !_isVisible;
-    });
-  }
-
+class SectionTitle extends StatelessWidget {
+  final String title;
+  final Color textColor;
+  const SectionTitle({Key? key, required this.title, required this.textColor})
+      : super(key: key);
+  
   @override
   Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            color: textColor,
+            fontWeight: FontWeight.bold,
+          ),
+    );
+  }
+}
+
+class SecondScreen extends StatefulWidget {
+  final Color globalTextColor;
+  const SecondScreen({Key? key, required this.globalTextColor})
+      : super(key: key);
+  
+  @override
+  _SecondScreenState createState() => _SecondScreenState();
+}
+
+class _SecondScreenState extends State<SecondScreen>
+    with SingleTickerProviderStateMixin {
+  bool _textVisible = true;
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.bounceInOut,
+    );
+    _controller.repeat(reverse: true);
+  }
+  
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  
+  void toggleVisibility() {
+    setState(() {
+      _textVisible = !_textVisible;
+    });
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    // Adjust the background gradient based on current theme.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundGradient = LinearGradient(
+      colors: isDark
+          ? [Colors.deepOrange.shade700, Colors.amber.shade700]
+          : [Colors.deepOrange.shade300, Colors.amber.shade200],
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+    );
     return Scaffold(
-      backgroundColor: Colors.orange.shade50, // New background color for second screen
-      appBar: AppBar(
-        title: const Text('Second Fading Animation'),
-      ),
-      body: Center(
-        child: AnimatedOpacity(
-          opacity: _isVisible ? 1.0 : 0.0,
-          duration: const Duration(seconds: 2),
-          child: const Text(
-            'Welcome to the second screen!',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+      body: Container(
+        decoration: BoxDecoration(gradient: backgroundGradient),
+        child: SafeArea(
+          child: Center(
+            child: AnimatedOpacity(
+              opacity: _textVisible ? 1.0 : 0.0,
+              duration: const Duration(seconds: 2),
+              curve: Curves.fastOutSlowIn,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Text(
+                  'Welcome to the Second Screen!',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: widget.globalTextColor,
+                    shadows: const [
+                      Shadow(
+                        color: Colors.black45,
+                        offset: Offset(2, 2),
+                        blurRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.white70,
+        foregroundColor: Colors.black87,
         onPressed: toggleVisibility,
-        child: const Icon(Icons.animation_outlined),
+        child: const Icon(Icons.visibility),
       ),
     );
   }
